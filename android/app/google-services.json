@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "740084205858",
+    "firebase_url": "https://workmap-3d193.firebaseio.com",
+    "project_id": "workmap-3d193",
+    "storage_bucket": "workmap-3d193.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:740084205858:android:4d418210ebb583fc61bd7b",
+        "android_client_info": {
+          "package_name": "com.mapapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "740084205858-pnchb2qlhbe0cgakfefaeuspidbnugqj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD2Stnky7hwCj3DdSOglyZgYG1QsI2yFTc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "740084205858-pnchb2qlhbe0cgakfefaeuspidbnugqj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
