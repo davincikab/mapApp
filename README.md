@@ -29,5 +29,5 @@ npx react-native run-android
 
 ### Configuring firebase for iOS and android
 
-Firebase[https://rnfirebase.io/]
+Firebase [https://rnfirebase.io/]
 

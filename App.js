@@ -2,7 +2,11 @@ import React, {useState, useEffect} from 'react';
 import 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { StyleSheet, Text, View, ActivityIndicator,Image, TouchableOpacity, Animated } from 'react-native';
+import { 
+  StyleSheet, Text, View, ActivityIndicator,
+  Image, TouchableOpacity, Animated, TextInput, 
+  SafeAreaView, FlatList
+} from 'react-native';
 import MapboxGL from '@react-native-mapbox-gl/maps';
 
 // import firebase from '@react-native-firebase/app';
@@ -25,7 +29,11 @@ var firebaseConfig = {
 const Stack = createStackNavigator();
 
 // Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+// firebase.initializeApp(firebaseConfig);
+
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
 
 // Access Token
 MapboxGL.setAccessToken(
@@ -49,7 +57,17 @@ export default function() {
           <Stack.Screen 
               name="Map"
               component={MapPage}
-              options={{title:"Map"}}
+              options={{
+                title:"Map",
+                headerShown:false,
+                headerStyle: {  
+                  backgroundColor: 'transparent'
+                },
+                headerTintColor: 'transparent',
+                headerTitleStyle: {
+                  fontWeight: 'bold',
+                },
+              }}
             />
 
         
@@ -81,7 +99,6 @@ const ProfilePage = (item) => {
 
   useEffect(() => {
     const images = storage().ref(storageUrl);
-    // const descriptionInfo = firebaseApp.database().ref().child(descriptionUrl);
     const descriptionInfo = database().ref(descriptionUrl);
 
     images.getDownloadURL()
@@ -140,10 +157,15 @@ class MapPage extends React.Component {
         [-73.99155, 40.73581],
         [-73.99155, 40.73681],
       ],
+      center:[7.945162026843832, 19.295832786307415],
+      zoom:1,
       data:[],
       allPoints:[],
       fadeAnim: new Animated.Value(0),
-      activeMarkers:''
+      activeMarkers:'',
+      value:'A',
+      searchBookmark:{},
+      filterData:[]
     };
 
     
@@ -176,7 +198,7 @@ class MapPage extends React.Component {
 
       itemsRef.on('value', (snap) => {   
           let items = snap.val().features;
-          console.log(snap.val().features);
+          // console.log(snap.val().features);
           items.forEach(feature => {
             feature.properties.marker_type = dataSource.marker_type;
             feature.properties.category = dataSource.url;
@@ -192,6 +214,7 @@ class MapPage extends React.Component {
     });
   }
 
+
   // toggle layers  
   toggleLayer = (el) => {
     console.log(el);
@@ -202,8 +225,9 @@ class MapPage extends React.Component {
       var newData = this.state.allPoints;
       let markerType = newData.map(ft => ft.properties.marker_type);
 
-      console.log(...new Set(markerType));
       newData = newData.filter(feature => feature.properties.marker_type == el);
+      
+      // newData = this.getImageUrls(newData, el);
 
       this.fadeOut();
       this.setState({
@@ -252,19 +276,107 @@ class MapPage extends React.Component {
 
   }
 
+  zoomToBookMark = (item) => {
+    console.log("Zoomed to bookmark: " + item.properties.title);
+
+    // create an Animated marker
+    let zoom = dataSources.find(dt => dt.url == item.category).reduce(dt=> dt.zoom);
+    console.log("Zoom to:"+ zoom);
+
+    // hide it a after a few seconds
+    this.setState({
+      searchBoomark:item,
+      center:item.geometry.coordinates
+    });
+  }
+
+  // list of results
+  renderItem = ({item}) => {
+    return (
+        <View style={styles.item}>
+          <TouchableOpacity
+            onPress={() => this.zoomToBookMark(item)}
+          >
+            <Text>{item.properties.title}, {item.properties.category}</Text>
+          </TouchableOpacity>   
+        </View>
+    );
+  }
+
+  onChangeText = (text) => {
+    console.log(text);
+    
+    // filter all
+    const allBookmarks = this.state.allPoints;
+
+    let filterData = allBookmarks.map(bookmark => {
+        if(bookmark.properties.title &&
+          bookmark.properties.title.toLowerCase()
+            .includes(text.toLowerCase())
+        ) {
+
+          return bookmark;
+        }
+    }).filter(ft=> ft);
+
+    // slice data
+    filterData = filterData.length > 5 ? filterData.slice(0,6) : filterData;
+
+    console.log(filterData);
+    // update the state
+    this.setState({
+      value:text,
+      filterData:filterData
+    });
+  }
+
   render() {
+    const filterData = this.state.filterData;
     return (        
+        <>
+        <View style={styles.searchControl}>
+          <TextInput
+            style={styles.textInput}
+            onChangeText={text => this.onChangeText(text)}
+            value={this.state.value}
+          />
+
+          {filterData &&
+            <SafeAreaView style={styles.bookmarkList}>
+              <FlatList 
+                data={filterData}
+                renderItem={this.renderItem}
+                keyExtractor={item => item.properties.title}
+              />
+            </SafeAreaView>
+          }
+        </View>
+        
+
         <MapboxGL.MapView
           ref={(c) => (this._map = c)}
           onDidFinishLoadingMap={this.onDidFinishLoadingMap}
           onRegionDidChange={this.zoomend}
           style={styles.map}>
           <MapboxGL.Camera
-            zoomLevel={1.5}
-            centerCoordinate={[7.945162026843832, 19.295832786307415]}
+            zoomLevel={this.state.zoom}
+            centerCoordinate={this.state.center}
             minZoomLevel={1.5}
           />
 
+          {
+            this.state.searchBookmark.type &&
+            <MapboxGL.MarkerView coordinate={this.state.searchBoomark.geometry.coordinates}>
+              <View style={{
+                borderWidth:5,
+                borderColor:'#ffff00',
+                height:40,
+                width:40,
+                borderRadius:20,
+                backgroundColor: 'transparent',
+              }}></View>
+            </MapboxGL.MarkerView> 
+          }
           {
             this.state.data.length == 0 ?
             <MapboxGL.MarkerView coordinate={this.state.coordinates[0]}>
@@ -273,24 +385,27 @@ class MapPage extends React.Component {
             <CreateMarkers fadeAnim={this.state.fadeAnim} data={this.state.data} navigation={this.props.navigation}/>
           }
         </MapboxGL.MapView>
+        </>
     );
   }
 }
 
 const CreateMarkers = (props) => {
+  const data = props.data;
 
   // reroute 
   const onSelectedPoint = (event) => {
     props.navigation.navigate('Profile', {name:event.properties.title,  item:event})
   }
 
-  return (
-        props.data.map((data,key) => (
+  return ( 
+        data.map((data, key) => (
           <MapboxGL.MarkerView 
             key={key}
             coordinate={data.geometry.coordinates}
             anchor={{x: 0, y: 0}}
           >
+            {data.properties.icon &&
             <AnnotationContent 
               key={key}
               title={data.properties.title} 
@@ -298,6 +413,7 @@ const CreateMarkers = (props) => {
               imageUrl={data.properties.icon}
               fadeAnim={props.fadeAnim}
             />
+            }
           </MapboxGL.MarkerView>
         ) 
       )
@@ -305,7 +421,7 @@ const CreateMarkers = (props) => {
 }
 
 const AnnotationContent = (props) => {
-  // load the image
+  // // load the image
   const [imageUrl, setImageUrl] = useState(null);
 
   const regexp =  /(\.\.\/\w{3}\/)(\w+.{2,})/i;
@@ -331,7 +447,7 @@ const AnnotationContent = (props) => {
       <TouchableOpacity
         onPress={props.onPress}
         style={{
-          // backgroundColor: 'blue',
+          backgroundColor: 'blue',
           width: 40,
           height: 40,
           borderRadius: 20,
@@ -356,10 +472,7 @@ const AnnotationContent = (props) => {
                 }}
               />     
           }
-        </Animated.View>
-
-       
-        
+        </Animated.View>    
       </TouchableOpacity>
     </View>
   );
@@ -438,10 +551,45 @@ const styles = StyleSheet.create({
   },
   map:{
     flex:1,
-    height:250
+    height:250,
+    zIndex:0
   },
   imgMarker:{
     width: 50,
     height: 50,
+  },
+  searchControl:{
+    position:"absolute",
+    top:10,
+    right:0,
+    left:0,
+    zIndex:1,
+    paddingHorizontal:5,
+    marginHorizontal:20,
+    backgroundColor: 'transparent'
+  },
+  textInput:{
+    backgroundColor:'#fff',
+    height: 40, 
+    borderColor: 'gray', 
+    borderWidth: 1, 
+    marginHorizontal:10,
+    marginTop:10,
+    borderRadius:20,
+    paddingHorizontal:10,
+    fontSize:15
+  },
+  bookmarkList:{
+    marginTop:10,
+    backgroundColor:'transparent'
+  },
+  item:{
+    backgroundColor:"#fff",
+    borderTopColor:"#ddd",
+    borderTopWidth:1,
+    paddingVertical:4,
+    paddingHorizontal:5,
+    marginHorizontal:10,
+    fontSize:15
   }
 });
