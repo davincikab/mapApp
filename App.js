@@ -146,7 +146,7 @@ const ProfilePage = (item) => {
 class MapPage extends React.Component {
   constructor(props) {
     super(props);
-
+    this.mounted = false;
     this.state = {
       backgroundColor: 'blue',
       coordinates: [
@@ -189,6 +189,7 @@ class MapPage extends React.Component {
   getRef = () => database().ref();
 
   componentDidMount() {
+    this.mounted = true;
     // fetch the data
     dataSources.forEach(dataSource => {
 
@@ -203,15 +204,20 @@ class MapPage extends React.Component {
             return feature;
           });
 
-          this.setState((state) => ({
-            allPoints:[...state.allPoints, ...items]
-          }));
+          if(this.mounted) {
+            this.setState((state) => ({
+              allPoints:[...state.allPoints, ...items]
+            }));
+          }
 
       });
 
     });
   }
 
+  componentWillUnmount() {
+    this.mounted = false;
+  }
 
   // toggle layers  
   toggleLayer = (el) => {
