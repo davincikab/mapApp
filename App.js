@@ -519,7 +519,7 @@ const AnnotationContent = (props) => {
       })
       .catch( e =>{
         console.log("Storage failed: " + storageUrl);
-        setImageUrl('');
+        setImageUrl(null);
       });
 
     return function cleanup() {
