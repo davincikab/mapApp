@@ -204,11 +204,11 @@ class MapPage extends React.Component {
             return feature;
           });
 
-          if(this.mounted) {
+          // if(this.mounted) {
             this.setState((state) => ({
               allPoints:[...state.allPoints, ...items]
             }));
-          }
+          // }
 
       });
 
@@ -216,7 +216,7 @@ class MapPage extends React.Component {
   }
 
   componentWillUnmount() {
-    this.mounted = false;
+    // this.mounted = false;
   }
 
   // toggle layers  
@@ -443,7 +443,7 @@ class MapPage extends React.Component {
                 <TouchableOpacity
                 style={{
                   borderWidth:7,
-                  borderColor: 'blue',
+                  borderColor: '#f49e09',
                   width: 44,
                   height: 44,
                   borderRadius: 22,
@@ -534,7 +534,7 @@ const AnnotationContent = (props) => {
       <TouchableOpacity
         onPress={props.onPress}
         style={{
-          backgroundColor: 'blue',
+          backgroundColor:'#cdeaf2',
           width: 40,
           height: 40,
           borderRadius: 20,
