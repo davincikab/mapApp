@@ -384,6 +384,7 @@ class MapPage extends React.Component {
             onChangeText={text => this.onChangeText(text)}
             onFocus={e => this.onFocus(e)}
             value={this.state.value}
+            placeholder={"Search Bookmark ...."}
           />
 
           {filterData &&
@@ -659,8 +660,14 @@ const styles = StyleSheet.create({
     borderColor: 'gray', 
     borderWidth: 0, 
     marginHorizontal:10,
-    shadowColor:'gray',
-    shadowOffset:{width:0, height:3},
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
     marginTop:10,
     borderRadius:20,
     paddingHorizontal:10,
