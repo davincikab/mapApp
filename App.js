@@ -104,8 +104,11 @@ const ProfilePage = (item) => {
       console.log(snap.val());
        let element = snap.val();
 
-       element = element.find(el => el.title == title);
-       setDescription(element);
+       if(element) {
+        element = element.find(el => el.title == title);
+        setDescription(element);
+       }
+      
     });
 
   }, []);
