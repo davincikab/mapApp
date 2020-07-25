@@ -5,7 +5,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { 
   StyleSheet, Text, View, ActivityIndicator,
   Image, TouchableOpacity, Animated, TextInput, 
-  SafeAreaView, FlatList
+  SafeAreaView, FlatList, Keyboard, KeyboardAvoidingView
 } from 'react-native';
 import MapboxGL from '@react-native-mapbox-gl/maps';
 
@@ -60,13 +60,6 @@ export default function() {
               options={{
                 title:"Map",
                 headerShown:false,
-                headerStyle: {  
-                  backgroundColor: 'transparent'
-                },
-                headerTintColor: 'transparent',
-                headerTitleStyle: {
-                  fontWeight: 'bold',
-                },
               }}
             />
 
@@ -163,13 +156,15 @@ class MapPage extends React.Component {
       allPoints:[],
       fadeAnim: new Animated.Value(0),
       activeMarkers:'',
-      value:'A',
+      value:'',
       searchBookmark:{},
       filterData:[]
     };
 
+    this.searchInput = null;
     
   }
+
   fadeIn = () => {
     // Will change fadeAnim value to 1 in 5 seconds
     Animated.timing(this.state.fadeAnim, {
@@ -221,13 +216,8 @@ class MapPage extends React.Component {
     if(el != this.state.activeMarkers) {
       // console.log(newData);
       
-
       var newData = this.state.allPoints;
-      let markerType = newData.map(ft => ft.properties.marker_type);
-
       newData = newData.filter(feature => feature.properties.marker_type == el);
-      
-      // newData = this.getImageUrls(newData, el);
 
       this.fadeOut();
       this.setState({
@@ -238,6 +228,15 @@ class MapPage extends React.Component {
       this.fadeIn();
     }
     
+    // Update the bookmark
+    if(this.state.searchBookmark.properties) {
+      if(el != this.state.searchBookmark.properties.marker_type){
+        this.setState({
+          searchBookmark:{}
+        });
+      }
+      
+    }
 
   }
 
@@ -276,18 +275,43 @@ class MapPage extends React.Component {
 
   }
 
+  onMapPress = (e) => {
+    this.searchInput.blur();
+    Keyboard.dismiss();
+  }
+
+  navigateToBookmarkDescription = (bookmark) => {
+    this.props.navigation.navigate('Profile', {name:bookmark.properties.title,  item:bookmark});
+
+    // reset bookmark
+    this.setState({
+      searchBookmark:{}
+    });
+
+  }
+
   zoomToBookMark = (item) => {
     console.log("Zoomed to bookmark: " + item.properties.title);
+    Keyboard.dismiss();
+    this.searchInput.blur();
 
     // create an Animated marker
-    let zoom = dataSources.find(dt => dt.url == item.category).reduce(dt=> dt.zoom);
-    console.log("Zoom to:"+ zoom);
-
-    // hide it a after a few seconds
-    this.setState({
-      searchBoomark:item,
-      center:item.geometry.coordinates
+    let zoom = dataSources.find(dt => { 
+      if(dt.url == item.properties.category) {
+        return dt;
+      }
     });
+
+    console.log("Zoom to:"+ item.properties);
+
+    this.setState({
+      searchBookmark:item,
+      center:item.geometry.coordinates,
+      zoom:zoom.zoom,
+      filterData:[]    
+    });
+
+  
   }
 
   // list of results
@@ -305,7 +329,15 @@ class MapPage extends React.Component {
 
   onChangeText = (text) => {
     console.log(text);
-    
+    if(!text) {
+      this.setState({
+        filterData:[],
+        value:''
+      });
+
+      return;
+    }
+
     // filter all
     const allBookmarks = this.state.allPoints;
 
@@ -330,34 +362,55 @@ class MapPage extends React.Component {
     });
   }
 
+  onFocus = (e) => {
+    console.log(e);
+    this.onChangeText(this.state.value);
+  }
+
   render() {
     const filterData = this.state.filterData;
+    const searchBookmark = this.state.searchBookmark;
+
+    console.log("SeARCH: "+ JSON.stringify(searchBookmark));
     return (        
         <>
         <View style={styles.searchControl}>
           <TextInput
+            ref={(input) => (this.searchInput = input)}
             style={styles.textInput}
             onChangeText={text => this.onChangeText(text)}
+            onFocus={e => this.onFocus(e)}
             value={this.state.value}
           />
 
           {filterData &&
-            <SafeAreaView style={styles.bookmarkList}>
+            // <SafeAreaView style={styles.bookmarkList}>
               <FlatList 
+                keyboardShouldPersistTaps={'handled'}
+                style={styles.bookmarkList}
                 data={filterData}
                 renderItem={this.renderItem}
                 keyExtractor={item => item.properties.title}
               />
-            </SafeAreaView>
+            // </SafeAreaView>
           }
         </View>
         
-
+        <KeyboardAvoidingView
+          behavior={Platform.OS == "ios" ? "padding" : "height"}
+          style={{flex:1}}
+          keyboardVerticalOffset={-115}
+        >
         <MapboxGL.MapView
+          key={"map"}
           ref={(c) => (this._map = c)}
           onDidFinishLoadingMap={this.onDidFinishLoadingMap}
           onRegionDidChange={this.zoomend}
-          style={styles.map}>
+          rotateEnabled={false}
+          onPress={this.onMapPress}
+          pitchEnabled={false}
+          style={styles.map}
+          >
           <MapboxGL.Camera
             zoomLevel={this.state.zoom}
             centerCoordinate={this.state.center}
@@ -365,26 +418,37 @@ class MapPage extends React.Component {
           />
 
           {
-            this.state.searchBookmark.type &&
-            <MapboxGL.MarkerView coordinate={this.state.searchBoomark.geometry.coordinates}>
-              <View style={{
-                borderWidth:5,
-                borderColor:'#ffff00',
-                height:40,
-                width:40,
-                borderRadius:20,
-                backgroundColor: 'transparent',
-              }}></View>
-            </MapboxGL.MarkerView> 
-          }
-          {
             this.state.data.length == 0 ?
             <MapboxGL.MarkerView coordinate={this.state.coordinates[0]}>
-              {/* <AnnotationContent title={'this is a marker view'} /> */}
             </MapboxGL.MarkerView> :
             <CreateMarkers fadeAnim={this.state.fadeAnim} data={this.state.data} navigation={this.props.navigation}/>
           }
+
+          {
+            searchBookmark.properties &&
+            <MapboxGL.MarkerView 
+              coordinate={searchBookmark.geometry.coordinates}  
+              anchor={{x: 0, y: 0}}>
+              <View style={{borderColor: 'black', borderWidth: 0, width: "auto"}}>
+                <TouchableOpacity
+                style={{
+                  borderWidth:7,
+                  borderColor: 'blue',
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow:"hidden"
+                }}
+                onPress={() => this.navigateToBookmarkDescription(searchBookmark)}
+                ></TouchableOpacity>
+              </View>
+            </MapboxGL.MarkerView> 
+          }
+
         </MapboxGL.MapView>
+        </KeyboardAvoidingView>
         </>
     );
   }
@@ -431,13 +495,26 @@ const AnnotationContent = (props) => {
   let storageUrl = sourceFolder[2];
 
   useEffect(() => {
-    const images = storage().ref(storageUrl);
-  
-    images.getDownloadURL()
-    .then(url => {
-      setImageUrl(url);
-    })
-    .catch(e=>{console.log(e);})
+    let isSubscribed = true;
+    const images = storage()
+      .ref(storageUrl)
+      .getDownloadURL();
+
+    console.log(isSubscribed);
+
+    images.then(url => {
+        if(isSubscribed) {
+          setImageUrl(url);
+        }
+      })
+      .catch( e =>{
+        console.log("Storage failed: " + storageUrl);
+        setImageUrl('');
+      });
+
+    return function cleanup() {
+      isSubscribed = false;
+    }
 
   }, []);
 
@@ -551,8 +628,13 @@ const styles = StyleSheet.create({
   },
   map:{
     flex:1,
-    height:250,
-    zIndex:0
+    // height:250,
+    top:0,
+    bottom:0,
+    left:0,
+    right:0,
+    zIndex:0,
+    position:'absolute'
   },
   imgMarker:{
     width: 50,
@@ -572,8 +654,10 @@ const styles = StyleSheet.create({
     backgroundColor:'#fff',
     height: 40, 
     borderColor: 'gray', 
-    borderWidth: 1, 
+    borderWidth: 0, 
     marginHorizontal:10,
+    shadowColor:'gray',
+    shadowOffset:{width:0, height:3},
     marginTop:10,
     borderRadius:20,
     paddingHorizontal:10,
