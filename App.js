@@ -467,14 +467,9 @@ class MapPage extends React.Component {
 const CreateMarkers = (props) => {
   const data = props.data;
 
-  // reroute 
-  const onSelectedPoint = (event) => {
-    props.navigation.navigate('Profile', {name:event.properties.title,  item:event})
-  }
-
-  return ( 
-        data.map((data, key) => (
-          <MapboxGL.MarkerView 
+  const renderMarkers = (data, key) => {
+    return (
+      <MapboxGL.MarkerView 
             key={key}
             coordinate={data.geometry.coordinates}
             anchor={{x: 0, y: 0}}
@@ -489,20 +484,30 @@ const CreateMarkers = (props) => {
             />
             }
           </MapboxGL.MarkerView>
-        ) 
-      )
+    ) 
+  }
+  // reroute 
+  const onSelectedPoint = (event) => {
+    props.navigation.navigate('Profile', {name:event.properties.title,  item:event})
+  }
+
+  return ( 
+        data.map(renderMarkers) 
   );
 }
 
 const AnnotationContent = (props) => {
-  // // load the image
-  const [imageUrl, setImageUrl] = useState(null);
-
+  // get storage url
   const regexp =  /(\.\.\/\w{3}\/)(\w+.{2,})/i;
   let sourceFolder = props.imageUrl.match(regexp);
-
-  console.log(sourceFolder[2]);
   let storageUrl = sourceFolder[2];
+
+  // // load the image
+  const [imageUrl, setImageUrl] = useState(null);
+  const [storeUrl, setStoreUrl] = useState(storageUrl);
+
+  console.log("Folders: " +sourceFolder[2]);
+  console.log("State", imageUrl);
 
   useEffect(() => {
     let isSubscribed = true;
@@ -510,11 +515,10 @@ const AnnotationContent = (props) => {
       .ref(storageUrl)
       .getDownloadURL();
 
-    console.log(isSubscribed);
-
     images.then(url => {
         if(isSubscribed) {
           setImageUrl(url);
+          console.log(url);
         }
       })
       .catch( e =>{
@@ -526,7 +530,7 @@ const AnnotationContent = (props) => {
       isSubscribed = false;
     }
 
-  }, []);
+  }, [props.title]);
 
   return (
     <View style={{borderColor: 'black', borderWidth: 0, width: "auto"}}>
@@ -542,24 +546,16 @@ const AnnotationContent = (props) => {
           justifyContent: 'center',
           overflow:"hidden"
         }}>
-        <Animated.View
-          style={[
-            styles.fadingContainer,
-            {
-              opacity: props.fadeAnim // Bind opacity to animated value
-            }
-          ]}
-        >
 
         {imageUrl && 
             <Image
+                key={props.title}
                 style={styles.imgMarker}
                 source={{
                   uri: imageUrl,
                 }}
               />     
           }
-        </Animated.View>    
       </TouchableOpacity>
     </View>
   );
